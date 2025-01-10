@@ -2,6 +2,11 @@
 #define __MATRIX_
 
 #include <iostream>
+#include <concepts>
+#include <cmath>
+
+template<typename T>
+concept Numeric = std::is_integral_v<T> || std::is_floating_point_v<T>;
 
 namespace IMD {
 	//Класс, реализующий "матрицу".
@@ -99,12 +104,28 @@ namespace IMD {
 			std::swap(this->_cols, other._cols);
 			std::swap(this->_data, other._data);
 		}
+		//Транспонирование.
+		void tr() {
+			value_type** new_data = new value_type * [cols()];
+			for (size_type i{ 0 }; i < cols(); i++) {
+				new_data[i] = new value_type[rows()];
+				for (size_type j{ 0 }; j < rows(); ++j)
+					new_data[i][j] = _data[j][i];
+			}
+			free();
+			std::swap(_data, new_data);
+			std::swap(_rows, _cols);
+		}
 	private:
-		//Освобождение памяти.
+		//Освобождение памяти, выделенной под _data.
+		//Поля _rows и _cols не изменяются.
 		void free() {
-			for (size_type i{ 0 }; i < rows(); i++)
+			for (size_type i{ 0 }; i < rows(); i++) {
 				delete[] _data[i];
+				_data[i] = nullptr;
+			}
 			delete[] _data;
+			_data = nullptr;
 		}
 	};
 	//Печать в консоль.
@@ -122,6 +143,19 @@ namespace IMD {
 		print(mrx, separator);
 		std::cout << std::endl;
 	}
+	//template<Numeric T>
+	//bool inverse_matrix(const matrix<T>& input, matrix<T>& output) {
+	//	if (input.rows() != input.cols()) return false;
+
+	//	matrix<T> gauss_matrix{ input.rows() * 2, input.cols() * 2 }; //Создание матрицы (input | E)
+	//	for (typename IMD::matrix<T>::size_type i{ 0 }; i < input.rows(); ++i) {
+	//		for (typename IMD::matrix<T>::size_type j{ 0 }; j < input.cols(); ++j) {
+	//			gauss_matrix[i][j] = input[i][j];
+	//			if (i == j) gauss_matrix[i * 2][j * 2] = 1;
+	//			else gauss_matrix[i * 2][j * 2] = 0;
+	//		}
+	//	}
+	//}
 	template<typename T, typename P>
 	matrix<T> operator*(const matrix<T>& mrx, const P& value) {
 		matrix<T> result{ mrx };

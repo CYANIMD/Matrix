@@ -1,9 +1,9 @@
 ﻿
 #include "matrix.h"
+#include "entity.h"
 
 int main() {
-	IMD::matrix<double> mrx1 { 2, 3, -1 };
-	mrx1 *= -2.0;
-	mrx1 /= 5.0;
+	IMD::matrix<IMD::entity> mrx1{4, 2 };
+	mrx1.tr();
 	IMD::print(mrx1, " ");
 }

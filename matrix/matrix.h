@@ -5,62 +5,63 @@
 #include <concepts>
 #include <cmath>
 
-template<typename T>
-concept Numeric = std::is_integral_v<T> || std::is_floating_point_v<T>;
-
 namespace IMD {
+	template<typename T, typename T1>
+	using ResultTypeSum = decltype(std::declval<T>() + std::declval<T1>());
+	template<typename T, typename T1>
+	using ResultTypeMinus = decltype(std::declval<T>() - std::declval<T1>());
+	template<typename T, typename T1>
+	using ResultTypeProduct = decltype(std::declval<T>() * std::declval<T1>());
+	template<typename T, typename T1>
+	using ResultTypeDivision = decltype(std::declval<T>() / std::declval<T1>());
 	//Класс, реализующий "матрицу".
-	template<typename T>
+	template<typename ValueType>
 	class matrix {
 	public:
-		//Размерный тип.
-		using size_type = size_t;
-		//Значимый тип.
-		using value_type = T;
 	private:
-		value_type** _data;
-		size_type _rows;
-		size_type _cols;
+		ValueType** _data;
+		size_t _rows;
+		size_t _cols;
 	public:
 		//Простой конструктор.
-		explicit matrix(size_type rows = 0, size_type cols = 0, const value_type& value = value_type()) : _rows(rows), _cols(cols) {
-			_data = new value_type * [_rows];
-			for (size_type i{ 0 }; i < _rows; i++) {
-				_data[i] = new value_type[_cols];
+		explicit matrix(size_t rows = 0, size_t cols = 0, const ValueType& value = ValueType()) : _rows(rows), _cols(cols) {
+			_data = new ValueType * [_rows];
+			for (size_t i{ 0 }; i < _rows; i++) {
+				_data[i] = new ValueType[_cols];
 			}
 			this->fill(value);
 		}
 		//Конструктор копии.
-		explicit matrix(const matrix<value_type>& other) : _rows(other.rows()), _cols(other.cols()) {
-			_data = new value_type * [rows()];
-			for (size_type i{ 0 }; i < rows(); i++) {
-				_data[i] = new value_type[cols()];
-				for (size_type j{ 0 }; j < cols(); ++j) {
+		explicit matrix(const matrix<ValueType>& other) : _rows(other.rows()), _cols(other.cols()) {
+			_data = new ValueType * [rows()];
+			for (size_t i{ 0 }; i < rows(); i++) {
+				_data[i] = new ValueType[cols()];
+				for (size_t j{ 0 }; j < cols(); ++j) {
 					_data[i][j] = other._data[i][j];
 				}
 			}
 		}
 		//Move-конструктор копии.
-		matrix(matrix<value_type>&& other) {
+		matrix(matrix<ValueType>&& other) noexcept {
 			this->swap(other);
 		}
 		//Оператор копирующего присваивания.
-		matrix<value_type>& operator=(const matrix<value_type>& other) {
+		matrix<ValueType>& operator=(const matrix<ValueType>& other) {
 			if (this != &other) {
 				clear(); //В теле clear() вызывается метод free()
 				_rows = (other.rows());
 				_cols = (other.cols());
-				_data = new value_type * [rows()];
-				for (size_type i{ 0 }; i < rows(); i++) {
-					_data[i] = new value_type[cols()];
-					for (size_type j{ 0 }; j < cols(); ++j) {
+				_data = new ValueType * [rows()];
+				for (size_t i{ 0 }; i < rows(); i++) {
+					_data[i] = new ValueType[cols()];
+					for (size_t j{ 0 }; j < cols(); ++j) {
 						_data[i][j] = other._data[i][j];
 					}
 				}
 			}
 		}
 		//Move-конструктор копии.
-		matrix<value_type>& operator=(matrix<value_type>&& other) {
+		matrix<ValueType>& operator=(matrix<ValueType>&& other) noexcept {
 			this->swap(other);
 			return *this;
 		}
@@ -69,21 +70,21 @@ namespace IMD {
 			free();
 		}
 		//Возвращает элемент матрицы с заданными индексами.
-		value_type& operator()(size_type row, size_type col) {
+		ValueType& operator()(size_t row, size_t col) {
 			if (row > rows()) throw std::invalid_argument("The row is greater than count of matrix rows");
 			if (col > cols()) throw std::invalid_argument("The col is greater than count of matrix cols");
 			return _data[row][col];
 		}
 		//Возвращает элемент матрицы с заданными индексами.
-		const value_type& operator()(size_type row, size_type col) const {
+		const ValueType& operator()(size_t row, size_t col) const {
 			if (row > rows()) throw std::invalid_argument("The row is greater than count of matrix rows");
 			if (col > cols()) throw std::invalid_argument("The col is greater than count of matrix cols");
 			return _data[row][col];
 		}
 		//Возвращает число строк.
-		size_type rows() const { return _rows; }
+		size_t rows() const { return _rows; }
 		//Возвращает число столбцов.
-		size_type cols() const { return _cols; }
+		size_t cols() const { return _cols; }
 		//Очищение матрицы.
 		void clear() {
 			_rows = (0);
@@ -93,34 +94,60 @@ namespace IMD {
 		//Проверяет, пуста ли матрица.
 		bool empty() const { return _data == nullptr; }
 		//Заполнение матрицы заданным значением.
-		void fill(const value_type& value) {
-			for (size_type i{ 0 }; i < rows(); ++i)
-				for (size_type j{ 0 }; j < cols(); ++j)
+		void fill(const ValueType& value) {
+			for (size_t i{ 0 }; i < rows(); ++i)
+				for (size_t j{ 0 }; j < cols(); ++j)
 					this->operator()(i, j) = value;
 		}
 		//Меняет местами данные матриц.
-		void swap(matrix<value_type>& other) {
+		void swap(matrix<ValueType>& other) {
 			std::swap(this->_rows, other._rows);
 			std::swap(this->_cols, other._cols);
 			std::swap(this->_data, other._data);
 		}
-		//Транспонирование.
-		void tr() {
-			value_type** new_data = new value_type * [cols()];
-			for (size_type i{ 0 }; i < cols(); i++) {
-				new_data[i] = new value_type[rows()];
-				for (size_type j{ 0 }; j < rows(); ++j)
-					new_data[i][j] = _data[j][i];
+		//Транспонирование матрицы произвольного размера.
+		friend void transpose(matrix<ValueType>& mrx) {
+			ValueType** new_data = new ValueType * [mrx.cols()];
+			for (size_t i{ 0 }; i < mrx.cols(); i++) {
+				new_data[i] = new ValueType[mrx.rows()];
+				for (size_t j{ 0 }; j < mrx.rows(); ++j)
+					new_data[i][j] = mrx._data[j][i];
 			}
-			free();
-			std::swap(_data, new_data);
-			std::swap(_rows, _cols);
+			mrx.free();
+			std::swap(mrx._data, new_data);
+			std::swap(mrx._rows, mrx._cols);
+		}
+		//Разворачивает матрицу произвольного размера на pi/2 радиан (90 градусов).
+		friend void rotate(matrix<ValueType>& mrx) {
+			transpose(mrx);
+			for (size_t i{ 0 }; i < mrx.rows(); ++i) {
+				size_t left = 0;
+				size_t right = mrx.cols() - 1;
+				while (left < right) {
+					std::swap(mrx._data[i][left], mrx._data[i][right]);
+					++left;
+					--right;
+				}
+			}
+		}
+
+		//Разворот 
+		//Проверяет, является ли матрица квадратной.
+		bool is_square() const {
+			return rows() == cols();
+		}
+		//Проверяет, является ли матрица симметричной.
+		bool is_symmetric() const {
+			for (size_t i{ 0 }; i < rows(); ++i)
+				for (size_t j{ 0 }; j < cols(); ++j)
+					if (operator()(i, j) != operator()(j, i)) return false;
+			return true;
 		}
 	private:
 		//Освобождение памяти, выделенной под _data.
 		//Поля _rows и _cols не изменяются.
 		void free() {
-			for (size_type i{ 0 }; i < rows(); i++) {
+			for (size_t i{ 0 }; i < rows(); i++) {
 				delete[] _data[i];
 				_data[i] = nullptr;
 			}
@@ -129,17 +156,17 @@ namespace IMD {
 		}
 	};
 	//Печать в консоль.
-	template<typename T>
-	void print(const IMD::matrix<T>& mrx, const char* separator = " ") {
-		for (typename IMD::matrix<T>::size_type i{ 0 }; i < mrx.rows(); ++i) {
-			for (typename IMD::matrix<T>::size_type j{ 0 }; j < mrx.cols(); ++j)
+	template<typename ValueType>
+	void print(const IMD::matrix<ValueType>& mrx, const char* separator = " ") {
+		for (size_t i{ 0 }; i < mrx.rows(); ++i) {
+			for (size_t j{ 0 }; j < mrx.cols(); ++j)
 				std::cout << mrx(i, j) << separator;
 			std::cout << std::endl;
 		}
 	}
 	//Печать в консоль с переходом на следующую строку.
-	template<typename T>
-	void println(const IMD::matrix<T>& mrx, const char* separator = " ") {
+	template<typename ValueType>
+	void println(const IMD::matrix<ValueType>& mrx, const char* separator = " ") {
 		print(mrx, separator);
 		std::cout << std::endl;
 	}
@@ -156,39 +183,66 @@ namespace IMD {
 	//		}
 	//	}
 	//}
-	template<typename T, typename P>
-	matrix<T> operator*(const matrix<T>& mrx, const P& value) {
-		matrix<T> result{ mrx };
-		for (typename IMD::matrix<T>::size_type i{ 0 }; i < result.rows(); ++i) {
-			for (typename IMD::matrix<T>::size_type j{ 0 }; j < result.cols(); ++j)
+	//Транспонирование матрицы произвольного размера.
+	template<typename ValueType, typename P>
+	matrix<ResultTypeProduct<ValueType, P>> operator*(const matrix<ValueType>& mrx, const P& value) {
+		matrix<ValueType> result{ mrx };
+		for (size_t i{ 0 }; i < result.rows(); ++i) {
+			for (size_t j{ 0 }; j < result.cols(); ++j)
 				result(i, j) *= value;
 		}
 		return result;
 	}
-	template<typename T, typename P>
-	matrix<T> operator*(const P& value, const matrix<T>& mrx) {
+	template<typename ValueType, typename P>
+	matrix<ResultTypeProduct<ValueType, P>> operator*(const P& value, const matrix<ValueType>& mrx) {
 		return mrx * value;
 	}
-	template<typename T, typename P>
-	matrix<T>& operator/(matrix<T>& mrx, const P& value) {
+	template<typename ValueType, typename D>
+	matrix<ResultTypeDivision<ValueType, D>>& operator/(matrix<ValueType>& mrx, const D& value) {
 		return mrx * 1 / value;
 	}
-	template<typename T, typename P>
-	matrix<T>& operator/(const P& value, matrix<T>& mrx) {
+	template<typename ValueType, typename D>
+	matrix<ResultTypeDivision<ValueType, D>>& operator/(const ValueType& value, matrix<D>& mrx) {
 		return mrx * 1 / value;
 	}
-	template<typename T, typename P>
-	matrix<T>& operator*=(matrix<T>& mrx, const P& value) {
-		for (typename IMD::matrix<T>::size_type i{ 0 }; i < mrx.rows(); ++i) {
-			for (typename IMD::matrix<T>::size_type j{ 0 }; j < mrx.cols(); ++j)
+	template<typename ValueType, typename P>
+	matrix<ResultTypeProduct<ValueType, P>>& operator*=(matrix<ValueType>& mrx, const P& value) {
+		for (size_t i{ 0 }; i < mrx.rows(); ++i) {
+			for (size_t j{ 0 }; j < mrx.cols(); ++j)
 				mrx(i, j) *= value;
 		}
 		return mrx;
 	}
-	template<typename T, typename P>
-	matrix<T>& operator/=(matrix<T>& mrx, const P& value) {
+	template<typename ValueType, typename D>
+	matrix<ResultTypeDivision<ValueType, D>>& operator/=(matrix<ValueType>& mrx, const D& value) {
 		mrx *= 1 / value;
 		return mrx;
+	}
+	template<typename T0, typename T1>
+	matrix<ResultTypeSum<T0, T1>> operator+(const matrix<T1>& first, const matrix<T0>& second) {
+		if (first.rows() != second.rows() || first.cols() != second.cols())
+			throw std::invalid_argument("The matrixes have uncorrect size");
+		matrix<ResultTypeSum<T0, T1>> result{ first.rows(), first.cols() };
+		for (size_t i{ 0 }; i < result.rows(); ++i) {
+			for (size_t j{ 0 }; j < result.cols(); ++j)
+				result(i, j) = first(i, j) + second(i, j);
+		}
+		return result;
+	}
+	template<typename T0, typename T1>
+	matrix<ResultTypeMinus<T0, T1>> operator-(const matrix<T0>& first, const matrix<T1>& second) {
+		return first + (-1) * second;
+	}
+	template<typename T0, typename T1>
+	matrix<ResultTypeSum<T0, T1>>& operator+=(matrix<T1>& first, const matrix<T0>& second) {
+		if (first.rows() != second.rows() || first.cols() != second.cols())
+			throw std::invalid_argument("The matrixes have uncorrect size");
+		first = first + second;
+		return first;
+	}
+	template<typename T0, typename T1>
+	matrix<ResultTypeMinus<T0, T1>>& operator-=(matrix<T0>& first, const matrix<T1>& second) {
+		return first += (-1) * second;
 	}
 }
 

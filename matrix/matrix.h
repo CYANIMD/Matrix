@@ -5,8 +5,18 @@
 #include <concepts>
 #include <cmath>
 #include <vector>
+#include <random>
 
 namespace IMD {
+	template<typename T>
+	//Концепт целых чисел.
+	concept Integral = std::is_integral_v<T>;
+	template<typename T>
+	//Концепт вещественных чисел.
+	concept Floating = std::is_floating_point_v<T>;
+	template<typename T>
+	//Концепт целых и вещественных чисел.
+	concept Numeric = Integral<T> || Floating<T>;
 	template<typename T, typename T1>
 	using ResultTypeSum = decltype(std::declval<T>() + std::declval<T1>());
 	template<typename T, typename T1>
@@ -18,7 +28,6 @@ namespace IMD {
 	//Класс, реализующий "матрицу".
 	template<typename ValueType>
 	class matrix {
-	public:
 	private:
 		ValueType** _data;
 		size_t _rows;
@@ -45,6 +54,15 @@ namespace IMD {
 		//Move-конструктор копии.
 		matrix(matrix<ValueType>&& other) noexcept {
 			this->swap(other);
+		}
+		//Оператор приведения матрицы к заданному типу.
+		template<typename OtherValueType>
+		operator matrix<OtherValueType>() {
+			matrix<OtherValueType> result{ rows(), cols() };
+			for (size_t i{ 0 }; i < rows(); ++i)
+				for (size_t j{ 0 }; j < cols(); ++j)
+					result(i, j) = (OtherValueType)(this->operator()(i, j));
+			return result;
 		}
 		//Оператор копирующего присваивания.
 		matrix<ValueType>& operator=(const matrix<ValueType>& other) {
@@ -87,6 +105,8 @@ namespace IMD {
 		constexpr size_t rows() const { return _rows; }
 		//Возвращает число столбцов.
 		constexpr size_t cols() const { return _cols; }
+		//Возвращает количество элементов.
+		constexpr size_t size() const { return cols() * rows(); };
 		//Очищение матрицы.
 		void clear() {
 			_rows = (0);
@@ -107,6 +127,29 @@ namespace IMD {
 			std::swap(this->_cols, other._cols);
 			std::swap(this->_data, other._data);
 		}
+		//Проверяет, является ли матрица квадратной.
+		constexpr bool is_square() const {
+			return rows() == cols();
+		}
+		//Проверяет, является ли матрица симметричной.
+		constexpr bool is_symmetric() const {
+			for (size_t i{ 0 }; i < rows(); ++i)
+				for (size_t j{ 0 }; j < cols(); ++j)
+					if (operator()(i, j) != operator()(j, i)) return false;
+			return true;
+		}
+	private:
+		//Освобождение памяти, выделенной под _data.
+		//Поля _rows и _cols не изменяются.
+		void free() {
+			for (size_t i{ 0 }; i < rows(); i++) {
+				delete[] _data[i];
+				_data[i] = nullptr;
+			}
+			delete[] _data;
+			_data = nullptr;
+		}
+	public:
 		//Транспонирование матрицы произвольного размера.
 		friend void transpose(matrix<ValueType>& mrx) {
 			ValueType** new_data = new ValueType * [mrx.cols()];
@@ -132,40 +175,6 @@ namespace IMD {
 				}
 			}
 		}
-
-		//Разворот 
-		//Проверяет, является ли матрица квадратной.
-		constexpr bool is_square() const {
-			return rows() == cols();
-		}
-		//Проверяет, является ли матрица симметричной.
-		constexpr bool is_symmetric() const {
-			for (size_t i{ 0 }; i < rows(); ++i)
-				for (size_t j{ 0 }; j < cols(); ++j)
-					if (operator()(i, j) != operator()(j, i)) return false;
-			return true;
-		}
-		//Оператор приведения матрицы к заданному типу.
-		template<typename OtherValueType>
-		operator matrix<OtherValueType>() {
-			matrix<OtherValueType> result{ rows(), cols() };
-			for (size_t i{ 0 }; i < rows(); ++i)
-				for (size_t j{ 0 }; j < cols(); ++j)
-					result(i, j) = (OtherValueType)(this->operator()(i, j));
-			return result;
-		}
-
-	private:
-		//Освобождение памяти, выделенной под _data.
-		//Поля _rows и _cols не изменяются.
-		void free() {
-			for (size_t i{ 0 }; i < rows(); i++) {
-				delete[] _data[i];
-				_data[i] = nullptr;
-			}
-			delete[] _data;
-			_data = nullptr;
-		}
 	};
 	//Печать в консоль.
 	template<typename ValueType>
@@ -187,14 +196,44 @@ namespace IMD {
 	//	if (input.rows() != input.cols()) return false;
 
 	//	matrix<T> gauss_matrix{ input.rows() * 2, input.cols() * 2 }; //Создание матрицы (input | E)
-	//	for (typename IMD::matrix<T>::size_type i{ 0 }; i < input.rows(); ++i) {
-	//		for (typename IMD::matrix<T>::size_type j{ 0 }; j < input.cols(); ++j) {
-	//			gauss_matrix[i][j] = input[i][j];
-	//			if (i == j) gauss_matrix[i * 2][j * 2] = 1;
-	//			else gauss_matrix[i * 2][j * 2] = 0;
+	//	size_t current_row{ 0 };
+	//	for (size_t i{ 0 }; i < input.cols(); ++i) {
+	//		T current_value = input[current_row][i];
+	//		for (size_t j{ 0 }; j < input.rows(); ++j) {
+	//			if (j != current_row) {
+	//				input[][] += 
+	//			}
 	//		}
 	//	}
 	//}
+	// 
+	//Возвращает определитель квадратной матрицы.
+	template<Numeric T>
+	T determinate(const matrix<T>& mrx) {
+		if (mrx.rows() != mrx.cols()) throw std::invalid_argument("The matrix isn't square");
+
+		T result{ 0 };
+		size_t rows{ mrx.rows() };
+
+		//Загатовки для вычисления детерминантов матриц размера 1x1 и 2x2.
+		if (rows == 1) return mrx(0, 0);
+		if (rows == 2) return mrx(0, 0) * mrx(1, 1) - mrx(0, 1) * mrx(1, 0);
+
+		for (size_t i{ 0 }; i < rows; ++i) {
+			matrix<T> minor(rows - 1, rows - 1); //Создание минора матрицы.
+			for (size_t j{ 1 }; j < rows; ++j) {
+				size_t col{ 0 };
+				for (size_t k{ 0 }; k < rows; ++k) {
+					if (k != i) {
+						minor(j - 1, col) = mrx(j, k);
+						col++;
+					}
+				}
+			}
+			result += (i % 2 == 0 ? 1 : -1) * mrx(0, i) * determinate(minor);
+		}
+		return result;
+	}
 	//Возвращает вектор элементов матрицы, расположенных в спиральном порядке.
 	template<typename ValueType>
 	std::vector<ValueType> spiral_values(const matrix<ValueType>& mrx) {
@@ -228,7 +267,6 @@ namespace IMD {
 		}
 		return result;
 	}
-
 	template<typename ValueType, typename P>
 	matrix<ResultTypeProduct<ValueType, P>> operator*(const matrix<ValueType>& mrx, const P& value) {
 		matrix<ValueType> result{ mrx };
@@ -289,8 +327,31 @@ namespace IMD {
 	matrix<T1>& operator-=(matrix<T0>& first, const matrix<T1>& second) {
 		return first += (-1) * second;
 	}
+	//Возвращает матрица заданного размера, заполненную случайный целыми числами в диапазоне [min_value; max_value).
+	template<Integral T>
+	inline matrix<T> generate_random_matrix(size_t rows, size_t cols, T min_value, T max_value) {
+		std::srand(std::time(nullptr));
+		matrix<int> result{ rows, cols };
+		for (size_t i{ 0 }; i < rows; ++i)
+			for (size_t j{ 0 }; j < cols; ++j)
+				result(i, j) = std::rand() % max_value + min_value;
+		return result;
+	}
+	//Возвращает матрица заданного размера, заполненную случайный вещественными числами в диапазоне [min_value; max_value).
+	template<Floating T>
+	inline matrix<T> generate_random_matrix(size_t rows, size_t cols, T min_value, T max_value) {
+		matrix<T> result{ rows, cols };
+		std::random_device rd;
+		std::mt19937 gen(rd());
+		std::uniform_real_distribution dist(min_value, max_value);
+		for (size_t i{ 0 }; i < rows; ++i)
+			for (size_t j{ 0 }; j < cols; ++j) {
+				auto x = dist(gen);
+				result(i, j) = x;
+			}
+		return result;
+	}
 }
-
 
 
 

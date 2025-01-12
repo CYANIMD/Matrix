@@ -4,6 +4,7 @@
 #include <iostream>
 #include <concepts>
 #include <cmath>
+#include <vector>
 
 namespace IMD {
 	template<typename T, typename T1>
@@ -59,6 +60,7 @@ namespace IMD {
 					}
 				}
 			}
+			return *this;
 		}
 		//Move-конструктор копии.
 		matrix<ValueType>& operator=(matrix<ValueType>&& other) noexcept {
@@ -82,9 +84,9 @@ namespace IMD {
 			return _data[row][col];
 		}
 		//Возвращает число строк.
-		size_t rows() const { return _rows; }
+		constexpr size_t rows() const { return _rows; }
 		//Возвращает число столбцов.
-		size_t cols() const { return _cols; }
+		constexpr size_t cols() const { return _cols; }
 		//Очищение матрицы.
 		void clear() {
 			_rows = (0);
@@ -92,7 +94,7 @@ namespace IMD {
 			free();
 		}
 		//Проверяет, пуста ли матрица.
-		bool empty() const { return _data == nullptr; }
+		constexpr bool empty() const { return _data == nullptr; }
 		//Заполнение матрицы заданным значением.
 		void fill(const ValueType& value) {
 			for (size_t i{ 0 }; i < rows(); ++i)
@@ -133,16 +135,26 @@ namespace IMD {
 
 		//Разворот 
 		//Проверяет, является ли матрица квадратной.
-		bool is_square() const {
+		constexpr bool is_square() const {
 			return rows() == cols();
 		}
 		//Проверяет, является ли матрица симметричной.
-		bool is_symmetric() const {
+		constexpr bool is_symmetric() const {
 			for (size_t i{ 0 }; i < rows(); ++i)
 				for (size_t j{ 0 }; j < cols(); ++j)
 					if (operator()(i, j) != operator()(j, i)) return false;
 			return true;
 		}
+		//Оператор приведения матрицы к заданному типу.
+		template<typename OtherValueType>
+		operator matrix<OtherValueType>() {
+			matrix<OtherValueType> result{ rows(), cols() };
+			for (size_t i{ 0 }; i < rows(); ++i)
+				for (size_t j{ 0 }; j < cols(); ++j)
+					result(i, j) = (OtherValueType)(this->operator()(i, j));
+			return result;
+		}
+
 	private:
 		//Освобождение памяти, выделенной под _data.
 		//Поля _rows и _cols не изменяются.
@@ -183,7 +195,40 @@ namespace IMD {
 	//		}
 	//	}
 	//}
-	//Транспонирование матрицы произвольного размера.
+	//Возвращает вектор элементов матрицы, расположенных в спиральном порядке.
+	template<typename ValueType>
+	std::vector<ValueType> spiral_values(const matrix<ValueType>& mrx) {
+		long left{ 0 };
+		long right = mrx.cols() - 1;
+		long bottom = mrx.rows() - 1;
+		long top{ 0 };
+		std::vector<ValueType> result{};
+
+		while (left <= right && top <= bottom) {
+			for (int i{ left }; i <= right; ++i) {
+				result.push_back(mrx(top, i));
+			}
+			++top;
+			for (int i{ top }; i <= bottom; ++i) {
+				result.push_back(mrx(i, right));
+			}
+			--right;
+			if (top <= bottom) {
+				for (int i{ right }; i >= left; --i) {
+					result.push_back(mrx(bottom, i));
+				}
+				--bottom;
+			}
+			if (left <= right) {
+				for (int i{ bottom }; i >= top; --i) {
+					result.push_back(mrx(i, left));
+				}
+				++left;
+			}
+		}
+		return result;
+	}
+
 	template<typename ValueType, typename P>
 	matrix<ResultTypeProduct<ValueType, P>> operator*(const matrix<ValueType>& mrx, const P& value) {
 		matrix<ValueType> result{ mrx };
@@ -205,16 +250,16 @@ namespace IMD {
 	matrix<ResultTypeDivision<ValueType, D>>& operator/(const ValueType& value, matrix<D>& mrx) {
 		return mrx * 1 / value;
 	}
-	template<typename ValueType, typename P>
-	matrix<ResultTypeProduct<ValueType, P>>& operator*=(matrix<ValueType>& mrx, const P& value) {
+	template<typename ValueType, typename P> requires requires(ValueType a, P b) { { a * b } -> std::same_as<ValueType>; }
+	matrix<ValueType>& operator*=(matrix<ValueType>& mrx, const P& value) {
 		for (size_t i{ 0 }; i < mrx.rows(); ++i) {
 			for (size_t j{ 0 }; j < mrx.cols(); ++j)
 				mrx(i, j) *= value;
 		}
 		return mrx;
 	}
-	template<typename ValueType, typename D>
-	matrix<ResultTypeDivision<ValueType, D>>& operator/=(matrix<ValueType>& mrx, const D& value) {
+	template<typename ValueType, typename D> requires requires(ValueType a, D b) { { a / b } -> std::same_as<ValueType>; }
+	matrix<ValueType>& operator/=(matrix<ValueType>& mrx, const D& value) {
 		mrx *= 1 / value;
 		return mrx;
 	}
@@ -233,15 +278,15 @@ namespace IMD {
 	matrix<ResultTypeMinus<T0, T1>> operator-(const matrix<T0>& first, const matrix<T1>& second) {
 		return first + (-1) * second;
 	}
-	template<typename T0, typename T1>
-	matrix<ResultTypeSum<T0, T1>>& operator+=(matrix<T1>& first, const matrix<T0>& second) {
+	template<typename T0, typename T1> requires requires(T0 a, T1 b) { { a + b } -> std::same_as<T1>; }
+	matrix<T1>& operator+=(matrix<T1>& first, const matrix<T0>& second) {
 		if (first.rows() != second.rows() || first.cols() != second.cols())
 			throw std::invalid_argument("The matrixes have uncorrect size");
 		first = first + second;
 		return first;
 	}
-	template<typename T0, typename T1>
-	matrix<ResultTypeMinus<T0, T1>>& operator-=(matrix<T0>& first, const matrix<T1>& second) {
+	template<typename T0, typename T1>requires requires(T0 a, T1 b) { { a - b } -> std::same_as<T1>; }
+	matrix<T1>& operator-=(matrix<T0>& first, const matrix<T1>& second) {
 		return first += (-1) * second;
 	}
 }

@@ -87,7 +87,7 @@ namespace IMD {
 		}
 		//Деструктор.
 		~matrix() {
-			free();
+			free_data();
 		}
 		//Возвращает элемент матрицы с заданными индексами.
 		ValueType& operator()(size_t row, size_t col) {
@@ -111,7 +111,7 @@ namespace IMD {
 		void clear() {
 			_rows = (0);
 			_cols = (0);
-			free();
+			free_data();
 		}
 		//Проверяет, пуста ли матрица.
 		constexpr bool empty() const { return _data == nullptr; }
@@ -141,7 +141,7 @@ namespace IMD {
 	private:
 		//Освобождение памяти, выделенной под _data.
 		//Поля _rows и _cols не изменяются.
-		void free() {
+		void free_data() {
 			for (size_t i{ 0 }; i < rows(); i++) {
 				delete[] _data[i];
 				_data[i] = nullptr;
@@ -158,7 +158,7 @@ namespace IMD {
 				for (size_t j{ 0 }; j < mrx.rows(); ++j)
 					new_data[i][j] = mrx._data[j][i];
 			}
-			mrx.free();
+			mrx.free_data;
 			std::swap(mrx._data, new_data);
 			std::swap(mrx._rows, mrx._cols);
 		}
@@ -174,6 +174,15 @@ namespace IMD {
 					--right;
 				}
 			}
+		}
+		//Инвертирует строки матрицы.
+		friend void reverse_rows(matrix< ValueType>& mrx) {
+			for (size_t i{ 0 }; i < mrx.rows(); ++i)
+				std::reverse(mrx._data[i], mrx._data[i] + mrx.cols());
+		}
+		//Инвертирует столбцы матрицы.
+		friend void reverse_cols(matrix< ValueType>& mrx) {
+
 		}
 	};
 	//Печать в консоль.
@@ -234,6 +243,30 @@ namespace IMD {
 		}
 		return result;
 	}
+	//Возвращает ранг матрицы произвольного размера.
+	template<Numeric T>
+	size_t rang(const matrix<T>& mrx) {
+		size_t result{ 0 }; //Ранг матрицы.
+		matrix<T> copy_mrx{ mrx };
+		for (size_t i{ 0 }; i < mrx.rows(); ++i) {
+			//Находим ведущий элемент в текущей строке
+			size_t lead = 0;
+			while (lead < mrx.cols() && copy_mrx(i, lead) == T(0)) ++lead;
+
+			if (lead < mrx.cols()) {
+				++result; // Увеличиваем ранг
+				//Приводим строку к единичному виду
+				for (size_t r{ i + 1 }; r < mrx.rows(); ++r) {
+					if (copy_mrx(r, lead) != T(0)) {
+						T factor = mrx(r, lead) / mrx(i, lead);
+						for (size_t c{ lead }; c < mrx.cols(); ++c)
+							copy_mrx(r, c) -= factor * copy_mrx(i, c);
+					}
+				}
+			}
+		}
+		return result;
+	}
 	//Возвращает вектор элементов матрицы, расположенных в спиральном порядке.
 	template<typename ValueType>
 	std::vector<ValueType> spiral_values(const matrix<ValueType>& mrx) {
@@ -244,22 +277,22 @@ namespace IMD {
 		std::vector<ValueType> result{};
 
 		while (left <= right && top <= bottom) {
-			for (int i{ left }; i <= right; ++i) {
+			for (long i{ left }; i <= right; ++i) {
 				result.push_back(mrx(top, i));
 			}
 			++top;
-			for (int i{ top }; i <= bottom; ++i) {
+			for (long i{ top }; i <= bottom; ++i) {
 				result.push_back(mrx(i, right));
 			}
 			--right;
 			if (top <= bottom) {
-				for (int i{ right }; i >= left; --i) {
+				for (long i{ right }; i >= left; --i) {
 					result.push_back(mrx(bottom, i));
 				}
 				--bottom;
 			}
 			if (left <= right) {
-				for (int i{ bottom }; i >= top; --i) {
+				for (long i{ bottom }; i >= top; --i) {
 					result.push_back(mrx(i, left));
 				}
 				++left;
@@ -351,6 +384,55 @@ namespace IMD {
 			}
 		return result;
 	}
+	//Возвращает квадратную спиральную матрицу, заполненную целыми числами.
+	template<Integral T>
+	inline matrix<T> generate_spiral_matrix(size_t n) {
+		matrix<T> result{ n, n };
+		long left{ 0 };
+		long right ( n - 1 );
+		long bottom( n - 1 );
+		long top{ 0 };
+		T value{ 1 };
+
+		while (left <= right && top <= bottom) {
+			for (long i{ left }; i <= right; ++i) {
+				result(top, i) = value;
+				++value;
+			}
+			++top;
+			for (int i{ top }; i <= bottom; ++i) {
+				result(i, right) = value;
+				++value;
+			}
+			--right;
+			if (top <= bottom) {
+				for (int i{ right }; i >= left; --i) {
+					result(bottom, i) = value;
+					++value;
+				}
+				--bottom;
+			}
+			if (left <= right) {
+				for (int i{ bottom }; i >= top; --i) {
+					result(i, left) = value;
+					++value;
+				}
+				++left;
+			}
+		}
+		return result;
+	}
+	//Возвращает единичную матрицу размера nxn.
+	template<Integral T>
+	inline matrix<T> generate_indentity_matrix(size_t n) {
+		return matrix<T>{n, n, T(1)};
+	}
+	//Возвращает нулевую матрицу размера nxn.
+	template<Integral T>
+	inline matrix<T> generate_zero_matrix(size_t n) {
+		return matrix<T>{n, n, T(0)};
+	}
+
 }
 
 

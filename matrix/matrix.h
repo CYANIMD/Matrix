@@ -6,25 +6,10 @@
 #include <cmath>
 #include <vector>
 #include <random>
+#include "IMDconcepts.h"
+#include "tasks.h"
 
 namespace IMD {
-	template<typename T>
-	//Концепт целых чисел.
-	concept Integral = std::is_integral_v<T>;
-	template<typename T>
-	//Концепт вещественных чисел.
-	concept Floating = std::is_floating_point_v<T>;
-	template<typename T>
-	//Концепт целых и вещественных чисел.
-	concept Numeric = Integral<T> || Floating<T>;
-	template<typename T, typename T1>
-	using ResultTypeSum = decltype(std::declval<T>() + std::declval<T1>());
-	template<typename T, typename T1>
-	using ResultTypeMinus = decltype(std::declval<T>() - std::declval<T1>());
-	template<typename T, typename T1>
-	using ResultTypeProduct = decltype(std::declval<T>() * std::declval<T1>());
-	template<typename T, typename T1>
-	using ResultTypeDivision = decltype(std::declval<T>() / std::declval<T1>());
 	//Класс, реализующий "матрицу".
 	template<typename ValueType>
 	class matrix {
@@ -362,42 +347,45 @@ namespace IMD {
 			}
 		return result;
 	}
-	//Возвращает квадратную спиральную матрицу, заполненную целыми числами.
+	//Возвращает квадратную боковую спиральную матрицу, заполненную целыми числами.
 	template<Integral T = short>
-	inline matrix<T> generate_spiral_matrix(size_t n) {
+	inline matrix<T> generate_side_spiral_matrix(size_t n, T start_value = T(0)) {
 		matrix<T> result{ n, n };
 		long left{ 0 };
 		long right(n - 1);
 		long bottom(n - 1);
 		long top{ 0 };
-		T value{ 1 };
 
 		while (left <= right && top <= bottom) {
 			for (long i{ left }; i <= right; ++i) {
-				result(top, i) = value;
-				++value;
+				result(top, i) = start_value++;
 			}
 			++top;
 			for (int i{ top }; i <= bottom; ++i) {
-				result(i, right) = value;
-				++value;
+				result(i, right) = start_value++;
 			}
 			--right;
 			if (top <= bottom) {
 				for (int i{ right }; i >= left; --i) {
-					result(bottom, i) = value;
-					++value;
+					result(bottom, i) = start_value++;
 				}
 				--bottom;
 			}
 			if (left <= right) {
 				for (int i{ bottom }; i >= top; --i) {
-					result(i, left) = value;
-					++value;
+					result(i, left) = start_value++;
 				}
 				++left;
 			}
 		}
+		return result;
+	}
+	//Возвращает центральную спиральную матрицу, заполненную целыми числами.
+	template<Integral T = short>
+	inline matrix<T> generate_central_spiral_matrix(size_t rows, size_t cols, T start_value = T(0)) {
+		matrix<T> result{ rows, cols };
+		std::vector<std::vector<size_t>> coordinates = centralSpiralGrid(rows, cols, rows / 2, cols / 2);
+		for (const auto& x : coordinates) result(x[0], x[1]) = start_value++;
 		return result;
 	}
 	//Возвращает единичную матрицу размера nxn.
